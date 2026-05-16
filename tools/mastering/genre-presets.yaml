@@ -1,0 +1,1952 @@
+# Genre-Specific Mastering Presets
+#
+# Each genre defines (all optional — unset fields inherit from defaults):
+#   target_lufs          - Loudness target (streaming standard: -14, dynamic genres: -16 to -18)
+#   cut_highmid          - EQ cut in dB at eq_highmid_freq to tame harshness (negative = cut, 0 = none)
+#   cut_highs            - High shelf cut in dB at eq_highs_freq (negative = cut, 0 = none)
+#   compress_ratio       - Compression ratio (1.0 = bypass, default 1.5 = gentle glue)
+#   compress_threshold   - Compression threshold in dB (default -18.0)
+#   compress_attack      - Compression attack in ms (default 30.0)
+#   compress_release     - Compression release in ms (default 200.0)
+#   eq_highmid_freq      - High-mid EQ center frequency in Hz (default 3500.0)
+#   eq_highmid_q         - High-mid EQ Q factor (default 1.5)
+#   eq_highs_freq        - High shelf frequency in Hz (default 8000.0)
+#   eq_highs_q           - High shelf Q factor (default 0.7)
+#   eq_low_freq          - Low shelf center frequency in Hz (default 80.0)
+#   eq_low_gain          - Low shelf gain in dB (positive = boost, negative = cut, 0 = bypass)
+#   eq_low_q             - Low shelf Q factor (default 0.7)
+#   eq_sub_cut_freq      - Sub-bass HPF frequency in Hz (0 = bypass, removes rumble below this)
+#   stereo_width         - Stereo width multiplier (0.0 = mono, 1.0 = unchanged, >1.0 = wider)
+#   stereo_bass_mono_freq - Mono-sum below this frequency in Hz (0 = bypass, bass coherence)
+#   output_bits            - Output bit depth (16 or 24, default 24 for streaming delivery)
+#   dither_bits            - Dither bit depth (default: follows output_bits)
+#   limiter_lookahead_ms   - Look-ahead buffer in ms (0 = reactive, default 5.0)
+#   limiter_release_ms     - Limiter release time in ms (default 50.0)
+#   compress_mix           - Compression wet/dry blend (0.0=dry, 1.0=wet, default 1.0)
+#   compress_makeup        - Compression makeup gain in dB (0 = off, default 0)
+#   processing_oversample  - Oversample factor for nonlinear stages (1/2/4, default 1)
+#   target_lra             - Target loudness range in LU (0 = disable, default 0)
+#   dc_filter_freq         - DC offset HPF frequency in Hz (0 = bypass, default 5.0)
+#   output_sample_rate     - Target sample rate (default 96000 for streaming; 0 = fall back to mastering.delivery_sample_rate)
+#   deess_enabled          - Enable de-esser (0 = off, 1 = on, default 0)
+#   deess_freq             - De-esser center frequency in Hz (default 6500)
+#   deess_bandwidth        - De-esser bandwidth in Hz (default 4000)
+#   deess_threshold        - De-esser threshold in dB (default -20.0)
+#   deess_ratio            - De-esser compression ratio (default 4.0)
+#   track_gap              - Silence to prepend per track in seconds (default 0)
+#   multiband_enabled      - Enable 3-band multiband compression (0=off, 1=on, default 0)
+#   multiband_low_crossover  - Low/mid crossover in Hz (default 200)
+#   multiband_high_crossover - Mid/high crossover in Hz (default 5000)
+#   multiband_low_ratio    - Low band compression ratio (default 1.5)
+#   multiband_mid_ratio    - Mid band compression ratio (default 1.5)
+#   multiband_high_ratio   - High band compression ratio (default 1.5)
+#   multiband_low_threshold  - Low band threshold in dB (default -18)
+#   multiband_mid_threshold  - Mid band threshold in dB (default -18)
+#   multiband_high_threshold - High band threshold in dB (default -18)
+#   midside_low_gain       - Side channel low shelf gain in dB (default 0, negative = narrower bass)
+#   midside_low_freq       - Side channel low shelf frequency (default 300)
+#   midside_high_gain      - Side channel high shelf gain in dB (default 0, positive = wider highs)
+#   midside_high_freq      - Side channel high shelf frequency (default 8000)
+#   click_peak_ratio       - QC click detector: peak-to-RMS ratio above which a 10ms window
+#                            counts as a click (default 6.0). Raise for genres with intentional
+#                            sharp transients (e.g., 8.0–10.0 for electronic/IDM/metal).
+#   click_fail_count       - QC click detector: absolute click count above which clicks FAIL
+#                            (default 3). Raise alongside peak_ratio for dense-transient genres.
+#   silence_leading_max_s  - QC silence check: leading silence longer than this duration (s)
+#                            FAILs. Default 0.5. Raise (e.g. 1.5) for genres whose intros
+#                            open with filter sweeps / builds (electronic, EDM, progressive).
+#   silence_trailing_max_s - QC silence check: trailing silence longer than this duration (s)
+#                            WARNs. Default 3.0.
+#   codec_preview_enabled  - Render a 128 kbps AAC .aac.m4a next to each master in
+#                            mastering_samples/ for operator Bluetooth audition (issue #296).
+#                            1 = on (default), 0 = off.
+#   codec_preview_bitrate_kbps - AAC bitrate for the preview (default 128).
+#   mono_fold_enabled      - Run the mono fold-down QC gate during mastering (issue #296).
+#                            Writes {track}.MONO_FOLD.md + {track}.mono.wav sample to
+#                            mastering_samples/. 1 = on (default), 0 = off.
+#   mono_fold_write_audio  - Write the .mono.wav sample alongside the report (1 = on,
+#                            default). Set to 0 for report-only.
+#   mono_fold_band_drop_fail_db - Hard-fail threshold for per-band drop (stereo vs. mono)
+#                            in dB. Default 6.0 — raise to 8–10 for ambient/cinematic
+#                            genres that intentionally use wide-stereo cancellation.
+#   mono_fold_lufs_warn_db - Warn threshold for integrated LUFS delta (default 3.0 dB).
+#   mono_fold_vocal_warn_db - Warn threshold for vocal-band (1–4 kHz) RMS delta (default 2.0 dB).
+#   mono_fold_correlation_warn - Warn threshold for stereo correlation coefficient (default 0.3).
+#   genre_ideal_lra_lu     - Target loudness-range (LU) used by the album-mastering
+#                            anchor selector (#290 phase 2). Tracks whose LRA is
+#                            close to this score higher on mix_quality. Default 8.0
+#                            matches balanced pop; dynamic genres override upward.
+#   spectral_reference_energy - 7-band reference curve (sub_bass / bass / low_mid /
+#                            mid / high_mid / high / air) as percentages of total
+#                            spectral energy, summing to 100. Anchor selector
+#                            compares each track's band_energy to this curve via
+#                            Euclidean distance. Genre overrides merge key-by-key;
+#                            missing keys inherit from defaults.
+#   coherence_stl_95_lu    - Max |track.stl_95 - anchor.stl_95| (LU) before
+#                            the track is classified an STL-95 outlier by
+#                            album_coherence_check (#290 phase 3b). Default 0.5.
+#   coherence_lra_floor_lu - Minimum short_term_range (LU) allowed; tracks
+#                            below trip an LRA-floor violation regardless of
+#                            anchor. Default 1.0.
+#   coherence_low_rms_db   - Max |delta_low_rms| (dB) before low-RMS outlier.
+#                            Default 2.0.
+#   coherence_vocal_rms_db - Max |delta_vocal_rms| (dB) before vocal-RMS outlier.
+#                            Default 2.0.
+#
+# Override per-user: copy to {overrides}/mastering-presets.yaml and edit.
+# User overrides merge on top of these defaults (genre-level).
+
+# Default settings applied when no genre is specified
+defaults:
+  target_lufs: -14.0
+  cut_highmid: 0
+  cut_highs: 0
+  compress_ratio: 1.5
+  compress_threshold: -18.0
+  compress_attack: 30.0
+  compress_release: 200.0
+  eq_highmid_freq: 3500.0
+  eq_highmid_q: 1.5
+  eq_highs_freq: 8000.0
+  eq_highs_q: 0.7
+  eq_low_freq: 80.0
+  eq_low_gain: 0
+  eq_low_q: 0.7
+  eq_sub_cut_freq: 0
+  stereo_width: 1.0
+  stereo_bass_mono_freq: 0
+  output_bits: 24
+  dither_bits: 24
+  limiter_lookahead_ms: 5.0
+  limiter_release_ms: 50.0
+  compress_mix: 1.0
+  compress_makeup: 0
+  processing_oversample: 1
+  target_lra: 0
+  dc_filter_freq: 5.0
+  output_sample_rate: 96000
+  deess_enabled: 0
+  deess_freq: 6500
+  deess_bandwidth: 4000
+  deess_threshold: -20.0
+  deess_ratio: 4.0
+  track_gap: 0
+  multiband_enabled: 0
+  multiband_low_crossover: 200
+  multiband_high_crossover: 5000
+  multiband_low_ratio: 1.5
+  multiband_mid_ratio: 1.5
+  multiband_high_ratio: 1.5
+  multiband_low_threshold: -18.0
+  multiband_mid_threshold: -18.0
+  multiband_high_threshold: -18.0
+  midside_low_gain: 0
+  midside_low_freq: 300
+  midside_high_gain: 0
+  midside_high_freq: 8000
+  eq_linear_phase: 0
+  click_peak_ratio: 6.0
+  click_fail_count: 3
+  codec_preview_enabled: 1
+  codec_preview_bitrate_kbps: 128
+  mono_fold_enabled: 1
+  mono_fold_write_audio: 1
+  mono_fold_band_drop_fail_db: 6.0
+  mono_fold_lufs_warn_db: 3.0
+  mono_fold_vocal_warn_db: 2.0
+  mono_fold_correlation_warn: 0.3
+
+  # Album-mastering anchor selector (#290 phase 2) — pop defaults
+  genre_ideal_lra_lu: 8.0
+  spectral_reference_energy:
+    sub_bass: 8.0
+    bass:     18.0
+    low_mid:  20.0
+    mid:      25.0
+    high_mid: 14.0
+    high:     10.0
+    air:       5.0
+
+  # Album-mastering coherence tolerance bands (#290 phase 3b).
+  # Used by album_coherence_check / album_coherence_correct to classify
+  # outlier tracks relative to the selected anchor. All thresholds are
+  # absolute-value deltas from the anchor unless otherwise noted.
+  coherence_stl_95_lu: 0.5         # ±LU around anchor's STL-95
+  coherence_lra_floor_lu: 1.0      # minimum short_term_range allowed (absolute)
+  coherence_low_rms_db: 2.0        # ±dB around anchor's low_rms
+  coherence_vocal_rms_db: 2.0      # ±dB around anchor's vocal_rms
+
+genres:
+  # === Pop / Mainstream ===
+  pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  k-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  j-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  city-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  enka:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  mandopop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  hyperpop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  dream-pop:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  synth-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  electropop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  baroque-pop:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  chamber-pop:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  bubblegum-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  twee-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  sophisti-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  art-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  piano-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  noise-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  jangle-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  anisong:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  cantopop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  thai-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  turkish-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  trot:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  kayokyoku:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  laiko:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+
+  # === Hip-Hop / Rap ===
+  hip-hop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  hiphop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  rap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  trap:
+    opus_safe: true
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  drill:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  phonk:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  grime:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  nerdcore:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  boom-bap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  cloud-rap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  conscious-hip-hop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  east-coast-hip-hop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  west-coast-rap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  southern-hip-hop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  gangsta-rap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  underground-hip-hop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  crunk:
+    target_lufs: -12.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  mumble-rap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  pop-rap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  chicano-rap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  country-rap:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  g-funk:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  chopped-and-screwed:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  bounce:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  abstract-hip-hop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  horrorcore:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  jazz-rap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  emo-rap:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  latin-trap:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  plugg:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === R&B / Soul / Funk ===
+  r&b:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  rnb:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  soul:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  funk:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  disco:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  nu-disco:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  neo-soul:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  motown:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  gospel:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  alternative-rnb:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  quiet-storm:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  new-jack-swing:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  northern-soul:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  psychedelic-soul:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  p-funk:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  boogie:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  trap-soul:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  doo-wop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === Rock ===
+  rock:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  indie-rock:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  alternative:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  grunge:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  garage-rock:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  surf-rock:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  psychedelic-rock:
+    target_lufs: -16.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  stoner-rock:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  progressive-rock:
+    target_lufs: -16.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  post-rock:
+    target_lufs: -16.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  math-rock:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  noise-rock:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  britpop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  madchester:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  arena-rock:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  heartland-rock:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  piano-rock:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  space-rock:
+    target_lufs: -16.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  rockabilly:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  psychobilly:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  krautrock:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  jam-band:
+    target_lufs: -16.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  canterbury-scene:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  slowcore:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  post-britpop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+
+  # === Punk ===
+  punk:
+    opus_safe: true
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  pop-punk:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  post-punk:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  hardcore-punk:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  crust-punk:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  d-beat:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  powerviolence:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  screamo:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  ska-punk:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  celtic-punk:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  riot-grrrl:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  emo:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  oi:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  dance-punk:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  no-wave:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: -1.0
+  post-punk-revival:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+
+  # === Metal ===
+  metal:
+    opus_safe: true
+    target_lufs: -14.0
+    cut_highmid: -3.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  thrash-metal:
+    target_lufs: -14.0
+    cut_highmid: -3.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  black-metal:
+    target_lufs: -14.0
+    cut_highmid: -3.0
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  doom-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  death-metal:
+    target_lufs: -14.0
+    cut_highmid: -3.0
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  metalcore:
+    target_lufs: -14.0
+    cut_highmid: -3.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  nu-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  power-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  symphonic-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  folk-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  deathcore:
+    target_lufs: -14.0
+    cut_highmid: -3.0
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  grindcore:
+    target_lufs: -14.0
+    cut_highmid: -3.0
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  groove-metal:
+    target_lufs: -14.0
+    cut_highmid: -3.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  sludge-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  progressive-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  speed-metal:
+    target_lufs: -14.0
+    cut_highmid: -3.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  djent:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  industrial:
+    opus_safe: true
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  hair-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  nwobhm:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  blackgaze:
+    target_lufs: -16.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  melodic-death-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: -1.0
+  drone-metal:
+    target_lufs: -16.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  post-metal:
+    target_lufs: -16.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  viking-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  crossover-thrash:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  trap-metal:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+
+  # === Electronic / Dance ===
+  electronic:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+    # Electronic intros often open with filter sweeps / builds that
+    # read as near-silence for the first 1-2 s.
+    silence_leading_max_s: 1.5
+  edm:
+    opus_safe: true
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+    silence_leading_max_s: 1.5
+  eurodance:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  tech-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  deep-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  french-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  progressive-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  techno:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  trance:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  drum-and-bass:
+    opus_safe: true
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  jungle:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  uk-garage:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  dubstep:
+    opus_safe: true
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  synthwave:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  new-wave:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  dancehall:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  breakbeat:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  electro:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  hardstyle:
+    opus_safe: true
+    target_lufs: -12.0
+    cut_highmid: -2.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  electroswing:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  future-bass:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  future-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  tropical-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  minimal-techno:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  gabber:
+    target_lufs: -12.0
+    cut_highmid: -2.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  nightcore:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  breakcore:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  pc-music:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  speedcore:
+    target_lufs: -12.0
+    cut_highmid: -2.0
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  riddim:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  wave:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  complextro:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  darkwave:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  bass-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  vocal-trance:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  goa-trance:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  psychedelic-trance:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  happy-hardcore:
+    target_lufs: -12.0
+    cut_highmid: -2.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  dub-techno:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  glitch:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  glitch-hop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  glitch-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  moombahton:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  neurofunk:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  witch-house:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  chiptune:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: -1.0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  ebm:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  darksynth:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  future-funk:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  folktronica:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  deconstructed-club:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: -1.0
+  lo-fi-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  hardwave:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  jersey-club:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  footwork:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  baile-funk:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  italo-disco:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  balearic:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  2-step-garage:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  bassline:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  speed-garage:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  broken-beat:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  afro-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  deep-techno:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  brostep:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  post-dubstep:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  post-disco:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  space-disco:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  rave:
+    target_lufs: -12.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  uk-funky:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  vocal-house:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  dark-electro:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  cyberpunk:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  gqom:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  benga:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  dembow:
+    target_lufs: -12.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  guaracha:
+    target_lufs: -12.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  coupe-decale:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  kuduro:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  kwaito:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  gengetone:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  dangdut:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+
+  # === Ambient / Chill / Atmospheric ===
+  ambient:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  lo-fi:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  lofi:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  chillwave:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  trip-hop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  vaporwave:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  shoegaze:
+    target_lufs: -16.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  downtempo:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  idm:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+    click_peak_ratio: 10.0
+    click_fail_count: 30
+  new-age:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  dark-ambient:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  drone:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  psybient:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  dungeon-synth:
+    target_lufs: -18.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  electroacoustic:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  lounge:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === Folk / Country / Americana ===
+  folk:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  country:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  americana:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  bluegrass:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  outlaw-country:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  zydeco:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  indie-folk:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  honky-tonk:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  bro-country:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  red-dirt:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  bakersfield-sound:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  western-swing:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  cowpunk:
+    target_lufs: -14.0
+    cut_highmid: -2.5
+    cut_highs: 0
+  neotraditional-country:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  cajun:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  swamp-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  celtic:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  singer-songwriter:
+    target_lufs: -16.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  polka:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  norteno:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+
+  # === Jazz / Blues ===
+  jazz:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  blues:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  swing:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  bossa-nova:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  acid-jazz:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  bebop:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  cool-jazz:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  hard-bop:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  modal-jazz:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  jazz-fusion:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  smooth-jazz:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  nu-jazz:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  gypsy-jazz:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  ethio-jazz:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  dark-jazz:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  latin-jazz:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  vocal-jazz:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  soul-jazz:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  big-band:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  delta-blues:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  piano-blues:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  desert-blues:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === Classical / Cinematic / Theatrical ===
+  classical:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  opera:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  musicals:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  musical-theater:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  broadway:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  soundtrack:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  film-theme:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  title-song:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  cinematic:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  medieval:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  madrigal:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  ragtime:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  gregorian-chant:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  spaghetti-western:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  dark-cabaret:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+
+  # === European Pop ===
+  schlager:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === Chanson / Cabaret ===
+  chanson:
+    target_lufs: -15.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  cabaret:
+    target_lufs: -15.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  musical-comedy:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  video-game-music:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === Middle Eastern ===
+  middle-eastern-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  arabic-pop:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  rai:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  mizrahi:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  gnawa:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  mahraganat:
+    target_lufs: -12.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  dabke:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  shaabi:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  sufi:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === European Pop / World ===
+  fado:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  flamenco:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  afro-cuban:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  reggaeton:
+    target_lufs: -12.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  amapiano:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  afroswing:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  rebetiko:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  turbo-folk:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  sevdah:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  manele:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  morna:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  afropop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === South Asian ===
+  bollywood:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  bhangra:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  qawwali:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  hindustani:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  carnatic:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  indian-classical:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  ghazal:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  chutney:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === Latin / World ===
+  latin:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  tropicalia:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  boogaloo:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  cumbia:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  samba:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  highlife:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  dub:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  zouk:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  afrobeats:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  reggae:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  roots-reggae:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  lovers-rock:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  rocksteady:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  ragga:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  ska:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  bachata:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  bolero:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  tango:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  mambo:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  merengue:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  son-cubano:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  ranchera:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  mariachi:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  corridos-tumbados:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  banda:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  tejano:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  vallenato:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  chicha:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  huayno:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  axe:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  forro:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  mpb:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  pagode:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  soca:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  calypso:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  mento:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  kompa:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  champeta:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  punta:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === African ===
+  soukous:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  juju:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  fuji:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  mbalax:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  chimurenga:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  mbaqanga:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  isicathamiya:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  maskandi:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  bongo-flava:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  taarab:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  sega:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  semba:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  kizomba:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === Christian / Faith ===
+  contemporary-christian:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  ccm:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  worship:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  praise:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  christian-rock:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  christian-hip-hop:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === Children's / Family ===
+  childrens-music:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  childrens:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  kinderlieder:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  lullaby:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+
+  # === Vocal / Choral ===
+  a-cappella:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  barbershop:
+    target_lufs: -16.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  choir:
+    target_lufs: -18.0
+    cut_highmid: 0
+    cut_highs: 0
+  beatboxing:
+    target_lufs: -14.0
+    cut_highmid: -1.0
+    cut_highs: 0
+  vocaloid:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  throat-singing:
+    target_lufs: -16.0
+    cut_highmid: 0
+    cut_highs: 0
+  visual-kei:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0
+  klezmer:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+
+  # === Other ===
+  go-go:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  spoken-word:
+    target_lufs: -14.0
+    cut_highmid: 0
+    cut_highs: 0
+  sea-shanties:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+  music-hall:
+    target_lufs: -14.0
+    cut_highmid: -1.5
+    cut_highs: 0
+
+  # === Legacy aliases ===
+  indie:
+    target_lufs: -14.0
+    cut_highmid: -2.0
+    cut_highs: 0

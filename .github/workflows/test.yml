@@ -1,0 +1,282 @@
+name: Validation & Tests
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Static Validation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+    - name: Set up Python
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyyaml
+
+    - name: Validate JSON and YAML files
+      run: |
+        python -c "
+        import yaml
+        import sys
+
+        # Validate plugin.json can be read
+        try:
+            with open('.claude-plugin/plugin.json') as f:
+                import json
+                json.load(f)
+            print('[OK] plugin.json is valid')
+        except Exception as e:
+            print(f'[FAIL] plugin.json validation failed: {e}')
+            sys.exit(1)
+
+        # Validate marketplace.json can be read
+        try:
+            with open('.claude-plugin/marketplace.json') as f:
+                import json
+                json.load(f)
+            print('[OK] marketplace.json is valid')
+        except Exception as e:
+            print(f'[FAIL] marketplace.json validation failed: {e}')
+            sys.exit(1)
+
+        # Validate config.example.yaml
+        try:
+            with open('config/config.example.yaml') as f:
+                yaml.safe_load(f)
+            print('[OK] config.example.yaml is valid')
+        except Exception as e:
+            print(f'[FAIL] config.example.yaml validation failed: {e}')
+            sys.exit(1)
+        "
+
+    - name: Check version consistency
+      run: |
+        python -c "
+        import json
+        import sys
+
+        # Read plugin.json version
+        with open('.claude-plugin/plugin.json') as f:
+            plugin_version = json.load(f)['version']
+
+        # Read marketplace.json version
+        with open('.claude-plugin/marketplace.json') as f:
+            marketplace_version = json.load(f)['plugins'][0]['version']
+
+        print(f'plugin.json version: {plugin_version}')
+        print(f'marketplace.json version: {marketplace_version}')
+
+        if plugin_version != marketplace_version:
+            print('[FAIL] ERROR: Version mismatch!')
+            print(f'  plugin.json:      {plugin_version}')
+            print(f'  marketplace.json: {marketplace_version}')
+            print('')
+            print('Fix by updating both files to the same version.')
+            sys.exit(1)
+
+        print('[OK] Versions match')
+        "
+
+    - name: Check SKILL.md structure and frontmatter
+      run: |
+        python -c "
+        import os
+        import sys
+        import yaml
+        import re
+
+        REQUIRED_FIELDS = ['name', 'description', 'model']
+        # Pattern: claude-{tier}-{major}[-{minor}][-{date}] e.g. claude-opus-4-6 or claude-opus-4-5-20251101
+        MODEL_PATTERN = r'^claude-(opus|sonnet|haiku)-\d+(-\d+)?(-\d{8})?$'
+
+        skill_dirs = [d for d in os.listdir('skills') if os.path.isdir(f'skills/{d}')]
+
+        missing_skill_md = []
+        frontmatter_errors = []
+
+        for skill_dir in skill_dirs:
+            skill_md_path = f'skills/{skill_dir}/SKILL.md'
+            if not os.path.exists(skill_md_path):
+                missing_skill_md.append(skill_md_path)
+                continue
+
+            # Check frontmatter
+            with open(skill_md_path, 'r') as f:
+                content = f.read()
+
+            # Extract YAML frontmatter
+            match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
+            if not match:
+                frontmatter_errors.append(f'{skill_md_path}: missing YAML frontmatter')
+                continue
+
+            try:
+                frontmatter = yaml.safe_load(match.group(1))
+            except yaml.YAMLError as e:
+                frontmatter_errors.append(f'{skill_md_path}: invalid YAML - {e}')
+                continue
+
+            # Check required fields
+            for field in REQUIRED_FIELDS:
+                if field not in frontmatter:
+                    frontmatter_errors.append(f'{skill_md_path}: missing required field \"{field}\"')
+
+            # Validate model format (allows new versions without updating check)
+            if 'model' in frontmatter and not re.match(MODEL_PATTERN, frontmatter['model']):
+                frontmatter_errors.append(f'{skill_md_path}: invalid model format \"{frontmatter[\"model\"]}\"')
+
+        if missing_skill_md:
+            print('[FAIL] Missing SKILL.md files:')
+            for path in missing_skill_md:
+                print(f'  - {path}')
+
+        if frontmatter_errors:
+            print('[FAIL] Frontmatter errors:')
+            for error in frontmatter_errors:
+                print(f'  - {error}')
+
+        if missing_skill_md or frontmatter_errors:
+            sys.exit(1)
+
+        print(f'[OK] All {len(skill_dirs)} skills have valid SKILL.md with required frontmatter')
+        "
+
+    - name: Check CLAUDE.md size
+      run: |
+        python -c "
+        import sys
+
+        MAX_CHARS = 40000
+
+        with open('CLAUDE.md', 'r', encoding='utf-8') as f:
+            content = f.read()
+            char_count = len(content)
+
+        size_k = char_count / 1000
+        print(f'CLAUDE.md: {size_k:.1f}K chars (max {MAX_CHARS // 1000}K)')
+
+        if char_count > MAX_CHARS:
+            print(f'[FAIL] CLAUDE.md exceeds {MAX_CHARS // 1000}K character limit')
+            print(f'  Current: {char_count} chars')
+            print(f'  Over by: {char_count - MAX_CHARS} chars')
+            sys.exit(1)
+
+        print('[OK] CLAUDE.md size within limit')
+        "
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    # Skip for fork PRs — untrusted code could modify requirements/test files
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+    - name: Set up Python
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends ffmpeg
+
+    - name: Install test dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-test.txt
+        pip install -r requirements.txt
+
+    - name: Run tests with coverage
+      run: |
+        python -m pytest tests/ -v --tb=short --cov=tools --cov=servers --cov-report=term-missing --cov-report=html:coverage-html --cov-fail-under=75
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      with:
+        name: coverage-report
+        path: coverage-html/
+        retention-days: 14
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    # Skip for fork PRs — untrusted code could modify requirements files
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+    - name: Set up Python
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      with:
+        python-version: '3.11'
+
+    - name: Install linting dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-test.txt
+
+    - name: Run ruff linter
+      run: |
+        ruff check tools/ servers/
+
+    - name: Run bandit security linter
+      run: |
+        bandit -r tools/ servers/ -ll -q -s B108,B608
+
+    - name: Run mypy type checker
+      run: |
+        mypy
+
+    - name: Validation summary
+      run: |
+        echo "================================"
+        echo "All lint checks passed!"
+        echo "================================"
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+    - name: Set up Python
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install pip-audit
+      run: |
+        python -m pip install --upgrade pip
+        pip install pip-audit
+
+    - name: Audit dependencies
+      run: |
+        # Policy: only block on vulnerabilities that have a published fix.
+        # Unfixed CVEs are ignored here and tracked for follow-up.
+        pip-audit -r requirements.txt -r requirements-test.txt \
+          --ignore-vuln CVE-2026-4539  # pygments 2.19.2 - no fix available yet

@@ -1,0 +1,680 @@
+#!/usr/bin/env python3
+"""
+Promo Video Generator
+
+Creates 15-second vertical videos (9:16, 1080x1920) for Instagram/Facebook ads.
+Uses ffmpeg to combine audio, album artwork, and waveform visualization.
+
+Requirements:
+    - ffmpeg with drawtext filter (brew install ffmpeg)
+    - Python 3.8+
+
+Usage:
+    # Single track
+    python generate_promo_video.py track.wav artwork.png "Track Name" -o output.mp4
+
+    # Batch process album (auto-finds artwork in folder)
+    python generate_promo_video.py --batch /path/to/album
+
+    # Batch with explicit artwork path
+    python generate_promo_video.py --batch /path/to/album --batch-artwork /path/to/artwork.png
+
+    # Batch with album name (checks content directory for artwork)
+    python generate_promo_video.py --batch /path/to/album --album my-album
+
+    # Custom duration and style
+    python generate_promo_video.py track.wav art.png "Song" --duration 30 --style circular
+"""
+
+from __future__ import annotations
+
+import argparse
+import atexit
+import contextlib
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import Any
+
+# Ensure project root is on sys.path
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+import logging
+
+from tools.shared.config import load_config as _load_config
+from tools.shared.fonts import find_font
+from tools.shared.logging_config import setup_logging
+from tools.shared.media_utils import (
+    check_ffmpeg as _check_ffmpeg,
+)
+from tools.shared.media_utils import (
+    extract_dominant_color,
+    find_best_segment,
+    get_analogous_colors,
+    get_complementary_color,
+    rgb_to_hex,
+)
+from tools.shared.progress import ProgressBar
+
+logger = logging.getLogger(__name__)
+
+# Safety-net cleanup for temp files left behind on abnormal exit
+_temp_files_to_cleanup: list[str] = []
+
+
+def _cleanup_temp_files() -> None:
+    for path in _temp_files_to_cleanup:
+        with contextlib.suppress(OSError):
+            os.unlink(path)
+    _temp_files_to_cleanup.clear()
+
+
+atexit.register(_cleanup_temp_files)
+
+_DEFAULT_CONFIG = {"artist": {"name": "bitwize"}}
+
+
+def load_config() -> dict[str, Any]:
+    """Load bitwize-music config file."""
+    return _load_config(fallback=_DEFAULT_CONFIG) or _DEFAULT_CONFIG
+
+
+# Video settings
+WIDTH = 1080
+HEIGHT = 1920
+FPS = 30
+DEFAULT_DURATION = 15  # seconds
+
+# Colors
+TEXT_COLOR = "#ffffff"
+
+# Font settings
+TITLE_FONT_SIZE = 64
+ARTIST_FONT_SIZE = 48
+
+
+def check_ffmpeg() -> bool:
+    """Verify ffmpeg is installed with showwaves filter."""
+    return _check_ffmpeg(require_showwaves=True)
+
+
+def generate_waveform_video(
+    audio_path: Path,
+    artwork_path: Path,
+    title: str,
+    output_path: Path,
+    duration: int = DEFAULT_DURATION,
+    style: str = "bars",
+    start_time: float | None = None,
+    artist_name: str = "bitwize",
+    font_path: str | None = None,
+    color_hex: str = "",
+    glow: float = 0.6,
+    text_color: str = "",
+) -> bool:
+    """
+    Generate promo video with waveform visualization.
+
+    Args:
+        audio_path: Path to audio file (WAV, MP3, etc.)
+        artwork_path: Path to album artwork (PNG, JPG)
+        title: Track title to display
+        output_path: Output video path
+        duration: Video duration in seconds
+        style: Visualization style (bars, line, circular)
+        start_time: Start time in audio (auto-detect if None)
+        artist_name: Artist name to display
+        font_path: Path to TrueType font file
+        color_hex: Wave color as hex (e.g. "#C9A96E"). Empty = auto-extract from artwork
+        glow: Glow intensity 0.0 (none) to 1.0 (full). Default 0.6
+        text_color: Text color as hex (e.g. "#FFD700"). Empty = use default white
+    """
+
+    if font_path is None:
+        font_path = find_font()
+        if font_path is None:
+            logger.error("No suitable font found")
+            return False
+
+    if start_time is None:
+        start_time = find_best_segment(audio_path, duration)
+
+    # Validate color parameters to prevent ffmpeg filter injection
+    _HEX_COLOR_RE = re.compile(r'^#?[0-9a-fA-F]{3,8}$')
+    if color_hex and not _HEX_COLOR_RE.match(color_hex):
+        logger.error("Invalid color_hex value: %s", color_hex)
+        return False
+    if text_color and not _HEX_COLOR_RE.match(text_color):
+        logger.error("Invalid text_color value: %s", text_color)
+        return False
+
+    # Resolve text color
+    effective_text_color = text_color if text_color else TEXT_COLOR
+
+    # Resolve wave color
+    if color_hex:
+        color2 = color_hex
+        logger.info("Using custom wave color: %s", color2)
+        # Still extract dominant for styles that need it
+        dominant = extract_dominant_color(artwork_path)
+        color1 = rgb_to_hex(dominant)
+        analogous1, analogous2 = get_analogous_colors(dominant)
+        _color_ana1 = rgb_to_hex(analogous1)
+        _color_ana2 = rgb_to_hex(analogous2)
+    else:
+        # Extract colors from album art
+        logger.info("Extracting colors from artwork...")
+        dominant = extract_dominant_color(artwork_path)
+        complementary = get_complementary_color(dominant)
+        analogous1, analogous2 = get_analogous_colors(dominant)
+        color1 = rgb_to_hex(dominant)
+        color2 = rgb_to_hex(complementary)
+        _color_ana1 = rgb_to_hex(analogous1)
+        _color_ana2 = rgb_to_hex(analogous2)
+
+    logger.debug("Wave color: %s, Text color: %s, Glow: %.1f", color2, effective_text_color, glow)
+
+    # Clamp glow to valid range
+    glow = max(0.0, min(1.0, glow))
+
+    # Write title and artist to temp files so ffmpeg reads them via textfile=
+    # This avoids all escaping issues with drawtext's text= parameter,
+    # preventing injection of ffmpeg filter directives through track titles.
+    title_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)  # noqa: SIM115
+    os.chmod(title_file.name, 0o600)
+    title_file.write(title)
+    title_file.close()
+    title_file_path = title_file.name
+    _temp_files_to_cleanup.append(title_file_path)
+
+    artist_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)  # noqa: SIM115
+    os.chmod(artist_file.name, 0o600)
+    artist_file.write(artist_name)
+    artist_file.close()
+    artist_file_path = artist_file.name
+    _temp_files_to_cleanup.append(artist_file_path)
+
+    # Build visualization filter based on style
+    viz_height = 600  # Much taller - fills space between art and text
+
+    # Scale glow sigma values (base values multiplied by glow factor)
+    glow_s = max(0.5, glow * 8)     # small glow: 0.5-8
+    _glow_m = max(1.0, glow * 13)    # medium glow: 1-13
+    glow_l = max(1.0, glow * 25)    # large glow: 1-25
+
+    if style == "mirror":
+        # Option A: Mirrored waveform with glow - uses complementary color
+        if glow > 0:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height//2}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}[wave_top];
+                 [wave_top]split[w1][w2];
+                 [w2]vflip[wave_bot];
+                 [w1][wave_bot]vstack[wave_stack];
+                 [wave_stack]split[ws1][ws2];
+                 [ws2]gblur=sigma={glow_s:.0f}[wave_blur];
+                 [ws1][wave_blur]blend=all_mode=screen[wave]"""
+        else:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height//2}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}[wave_top];
+                 [wave_top]split[w1][w2];
+                 [w2]vflip[wave_bot];
+                 [w1][wave_bot]vstack[wave]"""
+
+    elif style == "mountains":
+        # Option B: Dual-channel spectrum - uses complementary color
+        if glow > 0:
+            viz_filter = f"""[0:a]showfreqs=s={WIDTH}x{viz_height//2}:mode=line:ascale=sqrt:fscale=log:colors={color2}:win_size=1024:overlap=0.7[freq_top];
+                 [freq_top]split[f1][f2];
+                 [f2]vflip[freq_bot];
+                 [f1][freq_bot]vstack[wave_stack];
+                 [wave_stack]split[ws1][ws2];
+                 [ws2]gblur=sigma={max(1.0, glow * 5):.0f}[wave_blur];
+                 [ws1][wave_blur]blend=all_mode=screen[wave]"""
+        else:
+            viz_filter = f"""[0:a]showfreqs=s={WIDTH}x{viz_height//2}:mode=line:ascale=sqrt:fscale=log:colors={color2}:win_size=1024:overlap=0.7[freq_top];
+                 [freq_top]split[f1][f2];
+                 [f2]vflip[freq_bot];
+                 [f1][freq_bot]vstack[wave]"""
+
+    elif style == "colorwave":
+        # Option C: Clean waveform with subtle glow - single complementary color
+        if glow > 0:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}[wave_raw];
+                 [wave_raw]split[wr1][wr2];
+                 [wr2]gblur=sigma={max(1.0, glow * 4):.0f}[wave_blur];
+                 [wr1][wave_blur]blend=all_mode=screen:all_opacity={glow * 0.8:.1f}[wave]"""
+        else:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}[wave]"""
+
+    elif style == "neon":
+        # Sharp waveform with punchy glow - bright but not blinding
+        if glow > 0:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}[wave_raw];
+                 [wave_raw]split[wr1][wr2];
+                 [wr2]gblur=sigma={max(0.5, glow * 2):.0f}[wave_glow];
+                 [wr1][wave_glow]blend=all_mode=addition:all_opacity={glow:.1f}[wave]"""
+        else:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}[wave]"""
+
+    elif style == "pulse":
+        # Oscilloscope/EKG style - centered waveform with heavy multi-layer glow
+        # Uses complementary color from album art for cohesive look
+        if glow > 0:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}[wave_core];
+                 [wave_core]split=3[c1][c2][c3];
+                 [c2]gblur=sigma={glow_s:.0f}[glow1];
+                 [c3]gblur=sigma={glow_l:.0f}[glow2];
+                 [c1][glow1]blend=all_mode=screen[layer1];
+                 [layer1][glow2]blend=all_mode=screen[wave]"""
+        else:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}[wave]"""
+
+    elif style == "dual":
+        # Option E: Two separate waveforms - dominant on top, complementary below
+        viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height//2}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}[wave1];
+             [0:a]showwaves=s={WIDTH}x{viz_height//2}:mode=cline:scale=sqrt:colors={color1}:rate={FPS}[wave2];
+             [wave2]vflip[wave2f];
+             [wave1][wave2f]vstack[wave]"""
+
+    elif style == "bars":
+        # Fast reactive spectrum line
+        viz_filter = f"""[0:a]showfreqs=s={WIDTH}x{viz_height}:mode=line:ascale=sqrt:fscale=log:
+             colors=white:win_size=2048:overlap=0.5[wave]"""
+    elif style == "line":
+        # Classic waveform - single centered line
+        if glow > 0:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}:split_channels=0[wave_raw];
+                 [wave_raw]split[w1][w2];
+                 [w2]gblur=sigma={glow_s:.0f}[wave_blur];
+                 [w1][wave_blur]blend=all_mode=screen[wave]"""
+        else:
+            viz_filter = f"""[0:a]showwaves=s={WIDTH}x{viz_height}:mode=cline:scale=sqrt:colors={color2}:rate={FPS}:split_channels=0[wave]"""
+    else:  # circular
+        # Audio vectorscope - creates wild circular patterns
+        viz_filter = f"""[0:a]avectorscope=s=600x600:mode=lissajous_xy:
+             scale=sqrt:draw=line:zoom=1.5:rc=255:gc=255:bc=255[wave_raw];
+             [wave_raw]pad={WIDTH}:{viz_height}:(ow-iw)/2:(oh-ih)/2:black[wave]"""
+
+    # Build the complex filter
+    filter_complex = f"""
+    [1:v]scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,
+         crop={WIDTH}:{HEIGHT},
+         gblur=sigma=30,
+         colorbalance=bs=-.1:bm=-.1:bh=-.1[bg];
+
+    [1:v]scale={WIDTH-200}:-1:force_original_aspect_ratio=decrease[art];
+
+    [bg][art]overlay=(W-w)/2:(H-h)/2-200[base];
+
+    {viz_filter};
+
+    [base][wave]overlay=0:H-750[withwave];
+
+    [withwave]drawtext=textfile='{title_file_path}':
+         fontfile={font_path}:
+         fontsize={TITLE_FONT_SIZE}:
+         fontcolor={effective_text_color}:
+         x=(w-text_w)/2:
+         y=h-130:
+         shadowcolor=black:shadowx=2:shadowy=2[withtitle];
+
+    [withtitle]drawtext=textfile='{artist_file_path}':
+         fontfile={font_path}:
+         fontsize={ARTIST_FONT_SIZE}:
+         fontcolor={effective_text_color}@0.8:
+         x=(w-text_w)/2:
+         y=h-70:
+         shadowcolor=black:shadowx=2:shadowy=2[final]
+    """.replace('\n', '').replace('    ', '')
+
+    cmd = [
+        'ffmpeg', '-y',
+        '-ss', str(start_time),
+        '-t', str(duration),
+        '-i', str(audio_path),
+        '-loop', '1',
+        '-i', str(artwork_path),
+        '-filter_complex', filter_complex,
+        '-map', '[final]',
+        '-map', '0:a',
+        '-c:v', 'libx264',
+        '-preset', 'medium',
+        '-crf', '23',
+        '-c:a', 'aac',
+        '-b:a', '192k',
+        '-pix_fmt', 'yuv420p',
+        '-t', str(duration),
+        '-r', str(FPS),
+        str(output_path)
+    ]
+
+    logger.info("Generating: %s", output_path.name)
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            logger.error("ffmpeg failed: %s", result.stderr)
+            return False
+        return True
+    except Exception as e:
+        logger.error("Error generating video: %s", e)
+        return False
+    finally:
+        # Clean up temp text files (also remove from atexit list)
+        for tmp in (title_file_path, artist_file_path):
+            with contextlib.suppress(OSError):
+                os.unlink(tmp)
+            with contextlib.suppress(ValueError):
+                _temp_files_to_cleanup.remove(tmp)
+
+
+def get_title_from_markdown(track_md_path: Path) -> str | None:
+    """Extract title from track markdown frontmatter."""
+    try:
+        content = track_md_path.read_text()
+        if content.startswith('---'):
+            # Parse YAML frontmatter
+            parts = content.split('---', 2)
+            if len(parts) >= 3:
+                frontmatter = parts[1]
+                for line in frontmatter.split('\n'):
+                    if line.strip().startswith('title:'):
+                        title = line.split(':', 1)[1].strip()
+                        # Remove quotes if present
+                        if (title.startswith('"') and title.endswith('"')) or \
+                           (title.startswith("'") and title.endswith("'")):
+                            title = title[1:-1]
+                        return title
+    except Exception:
+        pass
+    return None
+
+
+def batch_process_album(
+    album_dir: Path,
+    artwork_path: Path,
+    output_dir: Path,
+    duration: int = DEFAULT_DURATION,
+    style: str = "bars",
+    artist_name: str = "bitwize",
+    font_path: str | None = None,
+    content_dir: Path | None = None,
+    jobs: int = 1,
+    color_hex: str = "",
+    glow: float = 0.6,
+    text_color: str = "",
+) -> None:
+    """Process all audio files in an album directory."""
+    audio_extensions = {'.wav', '.mp3', '.flac', '.m4a'}
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Find audio files
+    audio_files: list[Path] = []
+    for ext in audio_extensions:
+        audio_files.extend(album_dir.glob(f'*{ext}'))
+
+    if not audio_files:
+        logger.warning("No audio files found in %s", album_dir)
+        return
+
+    logger.info("Found %d tracks", len(audio_files))
+    if content_dir:
+        logger.info("Reading titles from: %s/tracks/", content_dir)
+
+    sorted_audio = sorted(audio_files)
+
+    def _resolve_title(audio_file: Path) -> str:
+        """Resolve track title from markdown or filename."""
+        import re
+        title = None
+        if content_dir:
+            track_md = content_dir / 'tracks' / f"{audio_file.stem}.md"
+            if track_md.exists():
+                title = get_title_from_markdown(track_md)
+                if title:
+                    logger.debug("Found title for %s: %s", audio_file.stem, title)
+        if not title:
+            title = audio_file.stem
+            if ' - ' in title:
+                title = title.split(' - ', 1)[-1]
+            else:
+                title = re.sub(r'^\d{1,2}[\.\-_\s]+', '', title)
+            title = title.replace('-', ' ').replace('_', ' ')
+            title = title.title()
+        return title
+
+    def _process_one(audio_file: Path) -> tuple[str, str, bool]:
+        """Generate promo video for a single track. Returns (name, success)."""
+        title = _resolve_title(audio_file)
+        output_file = output_dir / f"{audio_file.stem}_promo.mp4"
+        success = generate_waveform_video(
+            audio_path=audio_file,
+            artwork_path=artwork_path,
+            title=title,
+            output_path=output_file,
+            duration=duration,
+            style=style,
+            artist_name=artist_name,
+            font_path=font_path,
+            color_hex=color_hex,
+            glow=glow,
+            text_color=text_color,
+        )
+        return (audio_file.name, output_file.name, success)
+
+    workers = jobs if jobs > 0 else (os.cpu_count() or 1)
+    progress = ProgressBar(len(sorted_audio), prefix="Generating")
+
+    if workers == 1:
+        for audio_file in sorted_audio:
+            progress.update(audio_file.name)
+            _, out_name, success = _process_one(audio_file)
+            if success:
+                logger.info("  [OK] %s", out_name)
+            else:
+                logger.error("  [FAIL] %s", audio_file.name)
+    else:
+        logger.info("Using %d parallel workers", workers)
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(_process_one, af): af for af in sorted_audio}
+            for future in as_completed(futures):
+                af = futures[future]
+                progress.update(af.name)
+                _, out_name, success = future.result()
+                if success:
+                    logger.info("  [OK] %s", out_name)
+                else:
+                    logger.error("  [FAIL] %s", af.name)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description='Generate promo videos for social media ads',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    # Single track
+    python generate_promo_video.py song.wav cover.png "Song Title"
+
+    # Full album (auto-finds artwork)
+    python generate_promo_video.py --batch ./mastered -o ./videos
+
+    # Full album with explicit artwork
+    python generate_promo_video.py --batch ./mastered --batch-artwork /path/to/art.png
+
+    # Full album checking content dir for artwork
+    python generate_promo_video.py --batch ./mastered --album my-album
+
+    # 30 second clip with line style
+    python generate_promo_video.py song.wav cover.png "Title" --duration 30 --style line
+        """
+    )
+
+    parser.add_argument('audio', nargs='?', help='Audio file path')
+    parser.add_argument('artwork', nargs='?', help='Album artwork path')
+    parser.add_argument('title', nargs='?', help='Track title')
+
+    parser.add_argument('--batch', type=Path,
+                        help='Batch process all audio in directory')
+    parser.add_argument('--batch-artwork', type=Path, dest='batch_artwork',
+                        help='Path to album artwork (for batch mode)')
+    parser.add_argument('-o', '--output', type=Path,
+                        help='Output path (file or directory for batch)')
+    parser.add_argument('--duration', '-d', type=int, default=DEFAULT_DURATION,
+                        help=f'Video duration in seconds (default: {DEFAULT_DURATION})')
+    parser.add_argument('--style', '-s', choices=['mirror', 'mountains', 'colorwave', 'neon', 'pulse', 'dual', 'bars', 'line', 'circular'],
+                        default='bars', help='Waveform visualization style')
+    parser.add_argument('--start', type=float,
+                        help='Start time in seconds (auto-detect if not set)')
+    parser.add_argument('--artist', type=str,
+                        help='Artist name (read from config if not set)')
+    parser.add_argument('--album', type=str,
+                        help='Album name (for finding artwork in content directory)')
+    parser.add_argument('--verbose', action='store_true',
+                        help='Show debug output')
+    parser.add_argument('--quiet', action='store_true',
+                        help='Only show warnings and errors')
+    parser.add_argument('-j', '--jobs', type=int, default=1,
+                        help='Parallel jobs for batch mode (0=auto, default: 1)')
+    parser.add_argument('--color', type=str, default='',
+                        help='Wave color as hex (e.g. "#C9A96E"). Empty = auto-extract from artwork')
+    parser.add_argument('--glow', type=float, default=0.6,
+                        help='Glow intensity 0.0 (none) to 1.0 (full). Default: 0.6')
+    parser.add_argument('--text-color', type=str, default='',
+                        help='Text color as hex (e.g. "#FFD700"). Empty = white')
+
+    args = parser.parse_args()
+
+    setup_logging(__name__,
+                  verbose=getattr(args, 'verbose', False),
+                  quiet=getattr(args, 'quiet', False))
+
+    check_ffmpeg()
+
+    # Load config for artist name
+    config = load_config()
+    artist_name = args.artist or config.get('artist', {}).get('name', 'bitwize')
+
+    # Find font
+    font_path = find_font()
+    if font_path is None:
+        logger.error("No suitable font found")
+        sys.exit(1)
+
+    if args.batch:
+        # Batch mode
+        album_content_dir = None  # Will be set if --album provided
+        if args.batch_artwork:
+            artwork = args.batch_artwork
+        else:
+            # Try to find artwork with multiple naming patterns
+            artwork_patterns = [
+                'album.png', 'album.jpg',
+                'album-art.png', 'album-art.jpg',
+                'artwork.png', 'artwork.jpg',
+                'cover.png', 'cover.jpg'
+            ]
+            artwork = None
+
+            # 1. Check batch directory (audio folder)
+            for pattern in artwork_patterns:
+                candidate = args.batch / pattern
+                if candidate.exists():
+                    artwork = candidate
+                    break
+
+            # 2. Check parent directory
+            if not artwork:
+                for pattern in artwork_patterns:
+                    candidate = args.batch.parent / pattern
+                    if candidate.exists():
+                        artwork = candidate
+                        break
+
+            # 3. Check content directory via config
+            album_content_dir = None
+            if args.album:
+                content_root = Path(config.get('paths', {}).get('content_root', '')).expanduser()
+                if content_root.exists():
+                    # Search for album in content directory
+                    for genre_dir in (content_root / 'artists' / artist_name / 'albums').glob('*'):
+                        candidate_dir = genre_dir / args.album
+                        if candidate_dir.exists():
+                            album_content_dir = candidate_dir
+                            if not artwork:
+                                for pattern in artwork_patterns:
+                                    candidate = album_content_dir / pattern
+                                    if candidate.exists():
+                                        artwork = candidate
+                                        logger.info("Found artwork in content dir: %s", artwork)
+                                        break
+                            break
+
+            if not artwork:
+                logger.error("No artwork found")
+                logger.error("  Looked in:")
+                logger.error("    - %s/", args.batch)
+                logger.error("    - %s/", args.batch.parent)
+                if args.album:
+                    logger.error("    - content directory for album '%s'", args.album)
+                logger.error("  Specify with: --batch-artwork /path/to/artwork.png")
+                logger.error("  Or use: /bitwize-music:import-art to copy artwork to audio folder")
+                sys.exit(1)
+
+        output_dir = args.output or args.batch / 'promo_videos'
+
+        batch_process_album(
+            album_dir=args.batch,
+            artwork_path=artwork,
+            output_dir=output_dir,
+            duration=args.duration,
+            style=args.style,
+            artist_name=artist_name,
+            font_path=font_path,
+            content_dir=album_content_dir,
+            jobs=args.jobs,
+            color_hex=args.color,
+            glow=args.glow,
+            text_color=args.text_color,
+        )
+
+    else:
+        # Single file mode
+        if not all([args.audio, args.artwork, args.title]):
+            parser.print_help()
+            logger.error("audio, artwork, and title are required for single file mode")
+            sys.exit(1)
+
+        audio = Path(args.audio)
+        artwork = Path(args.artwork)
+        output = args.output or audio.with_suffix('.mp4')
+
+        success = generate_waveform_video(
+            audio_path=audio,
+            artwork_path=artwork,
+            title=args.title,
+            output_path=output,
+            duration=args.duration,
+            style=args.style,
+            start_time=args.start,
+            artist_name=artist_name,
+            font_path=font_path,
+            color_hex=args.color,
+            glow=args.glow,
+            text_color=args.text_color,
+        )
+
+        if success:
+            logger.info("[OK] Created: %s", output)
+        else:
+            logger.error("[FAIL] Failed to create video")
+            sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

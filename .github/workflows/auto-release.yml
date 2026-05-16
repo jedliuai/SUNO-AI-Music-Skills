@@ -1,0 +1,134 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.claude-plugin/plugin.json'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        fetch-depth: 0  # Full history for tagging
+
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
+        {
+          echo "version<<GHEOF"
+          echo "$VERSION"
+          echo "GHEOF"
+          echo "tag<<GHEOF"
+          echo "v$VERSION"
+          echo "GHEOF"
+        } >> $GITHUB_OUTPUT
+        echo "Detected version: $VERSION"
+
+    - name: Check if tag exists
+      id: check_tag
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "Tag v$VERSION already exists, skipping release"
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "Tag v$VERSION does not exist, proceeding with release"
+        fi
+
+    - name: Extract release notes from CHANGELOG
+      id: changelog
+      if: steps.check_tag.outputs.exists == 'false'
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        # Extract everything between [VERSION] and the next ## heading
+        NOTES=$(awk -v ver="$VERSION" '
+          $0 ~ "## \\[" ver "\\]" { found=1; next }
+          found && /^## \[/ { exit }
+          found { print }
+        ' CHANGELOG.md | head -c 65000)
+
+        # Trim leading/trailing whitespace
+        NOTES=$(printf '%s' "$NOTES" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+
+        # If empty or only whitespace, use default message
+        if [ -z "$NOTES" ]; then
+          NOTES="Release $VERSION"
+        fi
+
+        # Save to file to preserve formatting
+        printf '%s\n' "$NOTES" > /tmp/release_notes.md
+        echo "Release notes extracted from [$VERSION] section"
+
+    - name: Create GitHub Release
+      if: steps.check_tag.outputs.exists == 'false'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        VERSION: ${{ steps.version.outputs.version }}
+        TAG: ${{ steps.version.outputs.tag }}
+      run: |
+        gh release create \
+          "$TAG" \
+          --title "$VERSION" \
+          --notes-file /tmp/release_notes.md
+
+    - name: Verify CHANGELOG was updated
+      if: steps.check_tag.outputs.exists == 'false'
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        # Check if this version exists in CHANGELOG
+        if grep -qF "## [$VERSION]" CHANGELOG.md; then
+          echo "[OK] CHANGELOG.md contains release notes for version $VERSION"
+        else
+          echo "[WARN] CHANGELOG.md does not contain section for version $VERSION"
+          echo ""
+          echo "The release was created, but please update CHANGELOG.md manually:"
+          echo "1. Rename [Unreleased] to [$VERSION] - $(date +%Y-%m-%d)"
+          echo "2. Add new [Unreleased] section above it"
+          echo "3. Commit and push to main"
+        fi
+
+    - name: Bump develop to next dev version
+      if: steps.check_tag.outputs.exists == 'false'
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # Calculate next dev version (bump minor, reset patch, add -dev)
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+        NEXT_MINOR=$((MINOR + 1))
+        DEV_VERSION="${MAJOR}.${NEXT_MINOR}.0-dev"
+
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git fetch origin develop
+        git checkout develop
+
+        # Check if develop already has this or a higher dev version
+        CURRENT_DEV=$(jq -r '.version' .claude-plugin/plugin.json)
+        if [ "$CURRENT_DEV" = "$DEV_VERSION" ]; then
+          echo "develop is already at $DEV_VERSION, skipping bump"
+          exit 0
+        fi
+
+        # Update version files
+        jq ".version = \"$DEV_VERSION\"" .claude-plugin/plugin.json > /tmp/plugin.json && mv /tmp/plugin.json .claude-plugin/plugin.json
+        jq ".plugins[0].version = \"$DEV_VERSION\"" .claude-plugin/marketplace.json > /tmp/marketplace.json && mv /tmp/marketplace.json .claude-plugin/marketplace.json
+
+        git add .claude-plugin/plugin.json .claude-plugin/marketplace.json
+        git diff --cached --quiet && { echo "No version change needed, skipping"; exit 0; }
+        git commit -m "chore: bump develop to $DEV_VERSION"
+        git push origin develop
+        echo "Bumped develop to $DEV_VERSION"

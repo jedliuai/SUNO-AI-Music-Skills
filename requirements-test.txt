@@ -1,0 +1,17 @@
+# Test dependencies
+#
+# Install:
+#   pip install -r requirements-test.txt
+
+pytest>=9.0.3
+pytest-cov>=7.1.0
+pytest-xdist>=3.8.0
+pyyaml>=6.0
+
+# Linting
+ruff>=0.15.12
+mypy>=1.20.2
+types-PyYAML>=6.0.12.20260408
+
+# Security
+bandit>=1.9.4

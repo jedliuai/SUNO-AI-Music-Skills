@@ -1,0 +1,67 @@
+name: PR Target Check
+
+# Block PRs targeting main unless they come from develop.
+# Block any push to main that has a -dev version tag.
+# All external contributions must go through develop first.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check-base-branch:
+    name: PR Target Gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify PR source branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          echo "PR source branch: $HEAD_REF"
+          echo "PR target branch: main"
+
+          if [ "$HEAD_REF" != "develop" ]; then
+            echo "::error::PRs into main must come from the develop branch, not '$HEAD_REF'."
+            echo ""
+            echo "Please retarget your PR to the 'develop' branch instead."
+            echo "See CONTRIBUTING.md for the development workflow."
+            exit 1
+          fi
+
+          echo "✓ PR is from develop → main (allowed)"
+
+  check-no-dev-version:
+    name: No Dev Version on Main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Check plugin.json for -dev version
+        run: |
+          VERSION=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          echo "Version on main: $VERSION"
+
+          if echo "$VERSION" | grep -q '\-dev'; then
+            echo "::error::main branch has dev version '$VERSION'. Release versions only on main (no -dev suffix)."
+            exit 1
+          fi
+
+          echo "✓ Version $VERSION is a release version (no -dev suffix)"
+
+      - name: Check marketplace.json for -dev version
+        run: |
+          VERSION=$(python3 -c "import json; print(json.load(open('.claude-plugin/marketplace.json'))['plugins'][0]['version'])")
+          echo "Marketplace version: $VERSION"
+
+          if echo "$VERSION" | grep -q '\-dev'; then
+            echo "::error::marketplace.json has dev version '$VERSION'. Release versions only on main."
+            exit 1
+          fi
+
+          echo "✓ Marketplace version $VERSION is a release version"

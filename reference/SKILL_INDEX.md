@@ -1,0 +1,417 @@
+# Skill Index & Decision Tree
+
+Quick-reference guide for finding the right skill for any task.
+
+---
+
+## Decision Tree: "I need to..."
+
+### Getting Started
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...install dependencies and verify setup | `/setup` |
+| ...set up the plugin for the first time | `/configure` |
+| ...learn how to use this plugin | `/tutorial` |
+| ...see what skills are available | `/help` |
+| ...check plugin health (venv, skill registration) | `/health-check` |
+| ...learn about the plugin creator | `/about` |
+
+### Album Lifecycle
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...start a new album | `/new-album <name> <genre>` |
+| ...turn an existing idea into an album | `/promote-idea "<idea title>"` |
+| ...plan album concept and tracklist | `/album-conceptualizer` |
+| ...continue working on an existing album | `/resume <album-name>` |
+| ...see album progress at a glance | `/album-dashboard <album-name>` |
+| ...know what to do next | `/resume [album-name]` (includes next-step advice) |
+| ...check if album structure is correct | `/validate-album <album-name>` |
+| ...approve all generated tracks at once | Batch-approve via `update_track_field` MCP tool per track |
+| ...release my finished album | `/release-director` |
+
+### Writing & Quality
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...write lyrics for a track | `/lyric-writer` |
+| ...refine/polish lyrics after writing | `/lyric-refiner` |
+| ...check lyrics for pronunciation risks | `/pronunciation-specialist` |
+| ...run full QC before Suno generation | `/lyric-reviewer` |
+| ...run final pre-generation checkpoint | `/pre-generation-check` |
+| ...check if explicit flag is needed | `/explicit-checker` |
+| ...check lyrics for plagiarism | `/plagiarism-checker` |
+| ...check lyrics/prose for AI-sounding patterns | `/voice-checker` |
+
+### Suno Generation & Regeneration
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...create Suno prompts and settings | `/suno-engineer` |
+| ...create a Style Box for an instrumental track | `/suno-engineer` (entry point for instrumental tracks — skips lyric-writer) |
+| ...copy lyrics/prompts to clipboard | `/clipboard` |
+| ...regenerate a track I'm not happy with | See Regeneration Workflow below |
+| ...approve a generated track | Mark ✓ in Generation Log, set Status: `Final` |
+
+### Research (True-Story Albums)
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...research a topic for lyrics | `/researcher` |
+| ...find court documents automatically | `/document-hunter` |
+| ...find DOJ/FBI/SEC press releases | `/researchers-gov` |
+| ...find court filings and legal docs | `/researchers-legal` |
+| ...find investigative journalism | `/researchers-journalism` |
+| ...find SEC filings and financial data | `/researchers-financial` |
+| ...find historical archives | `/researchers-historical` |
+| ...find personal backgrounds | `/researchers-biographical` |
+| ...find subject's own words (tweets, blogs) | `/researchers-primary-source` |
+| ...find tech/security research | `/researchers-tech` or `/researchers-security` |
+| ...verify research quality | `/researchers-verifier` |
+| ...verify sources before writing | `/verify-sources <album-name>` |
+
+### Production & Release
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...polish raw Suno audio (fix noise, muddiness, harshness) | `/mix-engineer` |
+| ...master audio for streaming platforms | `/mastering-engineer` |
+| ...create promo videos for social media | `/promo-director` |
+| ...write social media copy for an album | `/promo-writer` |
+| ...review and polish social media copy | `/promo-reviewer` |
+| ...upload promo videos to cloud storage | `/cloud-uploader` |
+| ...create sheet music from audio | `/sheet-music-publisher` |
+| ...design album artwork concept | `/album-art-director` |
+
+### File Management
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...import audio files to album | `/import-audio` |
+| ...import track markdown files | `/import-track` |
+| ...place album art in correct locations | `/import-art` |
+| ...rename an album or track | `/rename <album\|track> <current> <new>` |
+
+### Ideas & Planning
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...track album ideas for later | `/album-ideas` |
+
+### Session & Workflow
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...start a fresh session | `/session-start` |
+| ...get recommended next action | `/resume [album-name]` |
+| ...see album progress dashboard | `/album-dashboard <album-name>` |
+
+### Maintenance
+| I need to... | Use this skill |
+|--------------|----------------|
+| ...run plugin tests | `/test` |
+| ...update skill model references | `/skill-model-updater` |
+
+---
+
+## Alphabetical Skill Reference
+
+| Skill | Description | Primary Use Case |
+|-------|-------------|------------------|
+| [`about`](/skills/about/SKILL.md) | About bitwize and this plugin | Learning about the plugin creator |
+| [`album-art-director`](/skills/album-art-director/SKILL.md) | Visual concepts for album artwork and AI art prompts | Creating album cover concepts for DALL-E/ChatGPT |
+| [`album-conceptualizer`](/skills/album-conceptualizer/SKILL.md) | Album concepts, tracklist architecture, thematic planning | Planning a new album's structure and narrative |
+| [`album-dashboard`](/skills/album-dashboard/SKILL.md) | Visual album progress dashboard with completion percentages | Quick overview of album progress by phase |
+| [`album-ideas`](/skills/album-ideas/SKILL.md) | Track and manage album ideas | Brainstorming and planning future albums |
+| [`clipboard`](/skills/clipboard/SKILL.md) | Copy track content to system clipboard | Quickly copying lyrics/prompts for Suno |
+| [`cloud-uploader`](/skills/cloud-uploader/SKILL.md) | Upload promo videos to Cloudflare R2 or AWS S3 | Hosting promo videos for social sharing |
+| [`configure`](/skills/configure/SKILL.md) | Set up or edit plugin configuration | First-time setup of ~/.bitwize-music/config.yaml |
+| [`document-hunter`](/skills/document-hunter/SKILL.md) | Automated browser-based document search from free archives | Finding court docs for true-story albums |
+| [`explicit-checker`](/skills/explicit-checker/SKILL.md) | Scan lyrics for explicit content, verify flags | Ensuring explicit flags match actual content |
+| [`genre-creator`](/skills/genre-creator/SKILL.md) | Create new genre documentation with consistent structure | Adding a new genre to the genre library |
+| [`health-check`](/skills/health-check/SKILL.md) | Run plugin health checks (venv packages and skill registration) | Troubleshooting missing skills or stale packages |
+| [`help`](/skills/help/SKILL.md) | Show available skills and common workflows | Quick reference for what skills exist |
+| [`import-art`](/skills/import-art/SKILL.md) | Place album art in audio and content locations | Copying artwork to correct paths after creation |
+| [`import-audio`](/skills/import-audio/SKILL.md) | Move audio files to correct album location | Importing WAV files from Suno downloads |
+| [`import-track`](/skills/import-track/SKILL.md) | Move track .md files to correct album location | Importing track files from external sources |
+| [`lyric-refiner`](/skills/lyric-refiner/SKILL.md) | Multi-pass lyric refinement for tightening, cohesion, and album unity | Polishing lyrics after writing, before QC |
+| [`lyric-reviewer`](/skills/lyric-reviewer/SKILL.md) | QC gate before Suno generation (14-point checklist) | Final quality check before generating |
+| [`lyric-writer`](/skills/lyric-writer/SKILL.md) | Write or review lyrics with prosody and rhyme craft | Writing new lyrics or fixing existing ones |
+| [`mastering-engineer`](/skills/mastering-engineer/SKILL.md) | Audio mastering guidance, loudness optimization | Mastering tracks to -14 LUFS for streaming |
+| [`mix-engineer`](/skills/mix-engineer/SKILL.md) | Per-stem audio polish (noise, EQ, compression, remix) | Polishing raw Suno output before mastering |
+| [`new-album`](/skills/new-album/SKILL.md) | Create album directory structure with templates | Starting a brand new album project |
+| [`next-step`](/skills/next-step/SKILL.md) | Analyze state and recommend optimal next action (also available via `/resume`) | Workflow guidance when unsure what to do |
+| [`plagiarism-checker`](/skills/plagiarism-checker/SKILL.md) | Scan lyrics for phrases matching existing songs via web search + LLM | Pre-release plagiarism check |
+| [`pre-generation-check`](/skills/pre-generation-check/SKILL.md) | Final pre-generation checkpoint (6 gates) | Validating all requirements before Suno generation |
+| [`promo-director`](/skills/promo-director/SKILL.md) | Generate promo videos for social media | Creating 15s vertical videos for Instagram/Twitter |
+| [`promo-reviewer`](/skills/promo-reviewer/SKILL.md) | Review and polish social media copy in promo/ files | Interactive post-by-post review before release |
+| [`promote-idea`](/skills/promote-idea/SKILL.md) | Convert a Pending idea from IDEAS.md into a full album (one-shot) | Moving an idea from backlog to active production |
+| [`promo-writer`](/skills/promo-writer/SKILL.md) | Generate platform-specific social media copy from album context | Populating promo/ templates with copy for each platform |
+| [`pronunciation-specialist`](/skills/pronunciation-specialist/SKILL.md) | Scan lyrics for pronunciation risks | Catching homographs and tricky words before Suno |
+| [`rename`](/skills/rename/SKILL.md) | Rename albums or tracks with path updates | Changing album/track names after creation |
+| [`release-director`](/skills/release-director/SKILL.md) | Album release coordination, QA, distribution | Releasing finished album to platforms |
+| [`researcher`](/skills/researcher/SKILL.md) | Investigative-grade research and source verification | Coordinating research for true-story albums |
+| [`researchers-biographical`](/skills/researchers-biographical/SKILL.md) | Personal backgrounds, interviews, motivations | Finding humanizing details about subjects |
+| [`researchers-financial`](/skills/researchers-financial/SKILL.md) | SEC filings, earnings calls, market data | Finding financial records and fraud documentation |
+| [`researchers-gov`](/skills/researchers-gov/SKILL.md) | DOJ/FBI/SEC press releases, agency statements | Finding official government announcements |
+| [`researchers-historical`](/skills/researchers-historical/SKILL.md) | Archives, contemporary accounts, timelines | Researching historical events and eras |
+| [`researchers-journalism`](/skills/researchers-journalism/SKILL.md) | Investigative articles, interviews, coverage | Finding news and investigative reporting |
+| [`researchers-legal`](/skills/researchers-legal/SKILL.md) | Court documents, indictments, sentencing | Finding legal filings and court records |
+| [`researchers-primary-source`](/skills/researchers-primary-source/SKILL.md) | Subject's own words: tweets, blogs, forums | Finding first-person accounts and statements |
+| [`researchers-security`](/skills/researchers-security/SKILL.md) | Malware analysis, CVEs, attribution reports | Researching cybersecurity incidents |
+| [`researchers-tech`](/skills/researchers-tech/SKILL.md) | Project histories, changelogs, developer interviews | Researching technology and open source history |
+| [`researchers-verifier`](/skills/researchers-verifier/SKILL.md) | Quality control, citation validation, fact-checking | Verifying research before human review |
+| [`resume`](/skills/resume/SKILL.md) | Find album and resume work where you left off | Continuing work on an existing album |
+| [`session-start`](/skills/session-start/SKILL.md) | Session startup procedure — verify setup, load state, report status | Beginning a fresh working session |
+| [`setup`](/skills/setup/SKILL.md) | Verify environment and dependencies | First-time installation check |
+| [`sheet-music-publisher`](/skills/sheet-music-publisher/SKILL.md) | Convert audio to sheet music, create songbooks | Creating printable sheet music from tracks |
+| [`skill-model-updater`](/skills/skill-model-updater/SKILL.md) | Update model references when new Codex models release | Keeping skills on current Codex models |
+| [`suno-engineer`](/skills/suno-engineer/SKILL.md) | Technical Suno V5 prompting, genre selection | Crafting optimal Suno style prompts |
+| [`test`](/skills/test/SKILL.md) | Run automated tests to validate plugin integrity | Verifying plugin works correctly |
+| [`tutorial`](/skills/tutorial/SKILL.md) | Interactive guided album creation | Learning the workflow step-by-step |
+| [`validate-album`](/skills/validate-album/SKILL.md) | Validate album structure, file locations | Catching path issues before they cause problems |
+| [`verify-sources`](/skills/verify-sources/SKILL.md) | Human source verification gate with timestamps | Verifying sources before generation |
+| [`voice-checker`](/skills/voice-checker/SKILL.md) | Detect AI-written patterns in lyrics and prose | Advisory review for voice authenticity |
+
+---
+
+## Skill Prerequisites
+
+What to have ready before using each skill:
+
+| Skill | Prerequisites |
+|-------|---------------|
+| `/album-conceptualizer` | Album name and genre decided |
+| `/lyric-writer` | Track concept defined, sources captured (if documentary) |
+| `/pronunciation-specialist` | Lyrics written |
+| `/lyric-refiner` | Lyrics written (runs after lyric-writer, before QC) |
+| `/lyric-reviewer` | Lyrics complete, pronunciation checked |
+| `/voice-checker` | Lyrics written, lyric-reviewer passed |
+| `/pre-generation-check` | Lyrics written, pronunciation resolved, style prompt created (instrumental: only Style Box needed) |
+| `/suno-engineer` | Lyrics written (auto-invoked by lyric-writer). For instrumental tracks: invoked directly as entry point |
+| `/mix-engineer` | WAV files (stems preferred) imported from Suno |
+| `/mastering-engineer` | WAV files downloaded from Suno (or polished output) |
+| `/promo-director` | Mastered audio + album artwork |
+| `/promo-writer` | Album with track concepts and lyrics written |
+| `/promo-reviewer` | Promo copy populated in promo/ directory |
+| `/cloud-uploader` | Promo videos generated |
+| `/release-director` | Mastering complete, all QA passed |
+| `/import-audio` | Audio files in known location (e.g., ~/Downloads) |
+| `/import-art` | Album art generated (from DALL-E or similar) |
+| `/researcher` | Album concept with research needs identified |
+| `/document-hunter` | Playwright installed (`pip install playwright && playwright install chromium`) |
+
+---
+
+## Common Skill Sequences
+
+### New Album (Standard)
+```
+/new-album <name> <genre>
+    -> /album-conceptualizer (plan concept, tracklist)
+    -> /lyric-writer (for each track — auto-invokes /suno-engineer)
+    -> /lyric-refiner (optional: multi-pass refinement for tightening + album cohesion)
+    -> /pronunciation-specialist (scan for risks)
+    -> /lyric-reviewer (final QC)
+    -> /voice-checker (advisory: flag AI-sounding patterns)
+    -> /pre-generation-check (validate all gates)
+    -> [Generate in Suno]
+    -> /mix-engineer (optional: polish raw audio)
+    -> /mastering-engineer (master audio)
+    -> /promo-director (optional: promo videos)
+    -> /promo-writer (optional: generate social media copy)
+    -> /release-director (release to platforms)
+```
+
+### True-Story/Documentary Album
+```
+/new-album <name> <genre>
+    -> /researcher (coordinate research)
+        -> /document-hunter (find court docs)
+        -> /researchers-legal, /researchers-gov, etc. (specialized research)
+        -> /researchers-verifier (verify citations)
+    -> /verify-sources (human source verification)
+    -> /lyric-writer (write lyrics from sources — auto-invokes /suno-engineer)
+    -> /lyric-refiner (optional: multi-pass refinement for tightening + album cohesion)
+    -> /pronunciation-specialist (names, places, acronyms)
+    -> /lyric-reviewer (verify against sources)
+    -> /pre-generation-check (validate all gates)
+    -> [Generate in Suno] -> /mix-engineer (optional) -> /mastering-engineer -> /release-director
+```
+
+### OST / Mixed Album (Vocal + Instrumental)
+```
+/new-album <name> <genre>
+    -> /album-conceptualizer (plan world, leitmotifs, scene mapping, mark tracks as vocal/instrumental)
+    -> For each track:
+        VOCAL TRACK:
+            -> /lyric-writer (auto-invokes /suno-engineer)
+            -> /pronunciation-specialist
+            -> /lyric-reviewer
+        INSTRUMENTAL TRACK (instrumental: true in frontmatter):
+            -> /suno-engineer directly (Style Box + section tags only, no lyrics)
+    -> /pre-generation-check (validates all gates — auto-skips lyrics gates for instrumental tracks)
+    -> [Generate in Suno — instrumental tracks use Instrumental: On]
+    -> /mix-engineer (optional: polish raw audio)
+    -> /mastering-engineer (master audio)
+    -> /album-art-director (world-themed artwork)
+    -> /promo-director (optional: promo videos)
+    -> /release-director (release to platforms)
+```
+
+**Note**: Any album type can have instrumental tracks — OST is just the most common case.
+Mark a track as instrumental by setting `instrumental: true` in track frontmatter.
+Instrumental tracks skip: lyric-writer, pronunciation-specialist, lyric-reviewer.
+Pre-generation-check auto-skips Gates 2 (Lyrics), 3 (Pronunciation), 4 (Explicit) for instrumentals.
+
+### Resume Existing Work
+```
+/resume <album-name>
+    -> [Codex reports status and next steps]
+    -> Continue from appropriate skill based on phase
+```
+
+### Quick Quality Check
+```
+/pronunciation-specialist <track>
+    -> /lyric-reviewer <track>
+    -> /voice-checker <track> (advisory)
+    -> /explicit-checker <album>
+    -> /validate-album <album>
+```
+
+### Track Regeneration (Rejected Generation)
+```
+[Listen to generated track — not happy?]
+    -> Log rejection reason in Generation Log
+    -> IF style issue:
+        -> /suno-engineer (revise Style Box)
+        -> [Regenerate on Suno]
+    -> IF lyrics issue:
+        -> /lyric-writer (fix lyrics)
+        -> /pronunciation-specialist (re-check)
+        -> [Regenerate on Suno]
+    -> IF bad luck (right prompt, wrong result):
+        -> [Regenerate on Suno with same settings — Suno is non-deterministic]
+    -> Log new attempt in Generation Log
+    -> [Repeat until satisfied]
+    -> Mark ✓ in Generation Log Rating
+    -> Set Status: Final
+```
+
+### Post-Generation to Release
+```
+/mix-engineer <album> (optional: polish raw audio)
+    -> /mastering-engineer <audio-folder>
+    -> /promo-director <album> (optional)
+    -> /promo-writer <album> (optional)
+    -> /promo-reviewer <album> (optional)
+    -> /cloud-uploader <album> (optional)
+    -> /release-director <album>
+```
+
+---
+
+## Skills That Work Together
+
+Natural pairings that complement each other:
+
+| Primary Skill | Pairs Well With | Why |
+|---------------|-----------------|-----|
+| `/lyric-writer` | `/lyric-refiner` | Refine after writing, before QC |
+| `/lyric-writer` | `/pronunciation-specialist` | Catch pronunciation issues immediately |
+| `/pronunciation-specialist` | `/lyric-reviewer` | Reviewer verifies pronunciation fixes applied correctly |
+| `/lyric-reviewer` | `/voice-checker` | Reviewer catches craft issues, voice-checker catches authenticity issues |
+| `/lyric-reviewer` | `/pre-generation-check` | Review must pass before generation gate |
+| `/researcher` | `/document-hunter` | Automate document acquisition |
+| `/suno-engineer` | `/clipboard` | Copy prompts directly to Suno |
+| `/mix-engineer` | `/mastering-engineer` | Polish audio before mastering for best results |
+| `/mastering-engineer` | `/promo-director` | Promo videos need mastered audio |
+| `/promo-director` | `/cloud-uploader` | Upload videos for sharing |
+| `/promo-writer` | `/promo-reviewer` | Generate copy, then polish it |
+| `/promo-writer` | `/voice-checker` | Flag AI tells in promo copy before review |
+| `/promo-writer` | `/promo-director` | Social copy + promo videos for full campaign |
+| `/promo-reviewer` | `/release-director` | Polish copy before release |
+| `/album-conceptualizer` | `/album-art-director` | Visual and sonic vision together |
+| `/new-album` | `/album-conceptualizer` | Always plan after creating structure |
+| `/lyric-reviewer` | `/explicit-checker` | Both are pre-generation QC |
+
+---
+
+## Skills to Avoid Combining
+
+Redundant or conflicting combinations:
+
+| Avoid Combining | Reason |
+|-----------------|--------|
+| `/lyric-writer` + `/lyric-reviewer` (simultaneously) | Run separately: writer first, reviewer after pronunciation pass |
+| `/lyric-writer` + `/lyric-refiner` (simultaneously) | Run refiner after writer completes — refiner is a post-writing tool |
+| Multiple researcher specialists at once | Use `/researcher` to coordinate them instead |
+| `/mastering-engineer` before audio import | Need to generate on Suno and import audio first |
+| `/release-director` before `/mastering-engineer` | Audio must be mastered before release |
+| `/promo-director` before mastering | Promo videos need final mastered audio |
+
+---
+
+## Skill Categories by Model
+
+Skills are assigned to models based on task complexity. See [model-strategy.md](model-strategy.md) for full rationale.
+
+### default model (Critical Creative Work — 7 skills)
+- `/lyric-writer` - Core creative content
+- `/lyric-refiner` - Multi-pass lyric refinement and album cohesion
+- `/suno-engineer` - Music generation prompts
+- `/album-conceptualizer` - Album concept shapes everything downstream
+- `/lyric-reviewer` - QC gate before generation, must catch all issues
+- `/researchers-legal` - Complex legal synthesis
+- `/researchers-verifier` - High-stakes verification
+
+### default model (Reasoning & Coordination — 30 skills)
+- `/album-art-director` - Visual direction
+- `/album-ideas` - Idea brainstorming and organization
+- `/cloud-uploader` - Cloud storage coordination
+- `/configure` - Interactive config setup
+- `/document-hunter` - Automated searching
+- `/explicit-checker` - Context-dependent content scanning
+- `/mastering-engineer` - Audio guidance
+- `/mix-engineer` - Stem processing guidance
+- `/plagiarism-checker` - Lyrics plagiarism scanning
+- `/promo-director` - Video generation
+- `/promo-reviewer` - Interactive copy review
+- `/promo-writer` - Social media copy generation
+- `/pronunciation-specialist` - Edge cases need judgment (homographs, context)
+- `/release-director` - Release coordination
+- `/researcher` - Research coordination
+- `/researchers-biographical`, `/researchers-financial`, `/researchers-gov` - Specialized research
+- `/researchers-historical`, `/researchers-journalism`, `/researchers-primary-source` - Specialized research
+- `/researchers-security`, `/researchers-tech` - Specialized research
+- `/resume` - Status reporting
+- `/session-start` - Session startup procedure
+- `/sheet-music-publisher` - Transcription workflow
+- `/tutorial` - Interactive guided creation
+- `/verify-sources` - Human verification gate
+- `/voice-checker` - Advisory review for AI-sounding patterns
+
+### default model (Pattern Matching — 17 skills)
+- `/about` - Static information
+- `/album-dashboard` - Progress dashboard
+- `/clipboard` - Copy to clipboard
+- `/health-check` - Plugin health checks
+- `/help` - Display information
+- `/import-art` - File operations
+- `/import-audio` - File operations
+- `/import-track` - File operations
+- `/new-album` - Directory creation
+- `/next-step` - Workflow routing
+- `/pre-generation-check` - Gate validation
+- `/promote-idea` - Idea → album orchestration
+- `/rename` - File/directory renaming
+- `/setup` - Environment detection
+- `/skill-model-updater` - Pattern replacement
+- `/test` - Run predefined checks
+- `/validate-album` - Structure validation
+
+---
+
+## Quick Tips
+
+- **Lost?** Start with `/resume <album-name>` to see status and next steps
+- **New here?** Run `/tutorial` for guided walkthrough
+- **Building true-story album?** Always start with `/researcher` before writing
+- **Before Suno?** Run `/lyric-reviewer` to catch issues
+- **Weird pronunciations?** Run `/pronunciation-specialist` on every track
+- **Track sounds wrong?** Log the reason in Generation Log, fix prompt or lyrics, regenerate. See Regeneration Workflow
+- **Instrumental track?** Set `instrumental: true` in frontmatter, then use `/suno-engineer` directly (skips lyrics workflow)
+- **Not sure what's available?** Run `/help` for categorized skill list
