@@ -1,3 +1,5 @@
+> **Chatgpt代充：[aishopvip.com](https://aishopvip.com)**
+
 # Codex AI Music Skills 中文说明
 
 这是一个面向 Codex 改造后的 AI 音乐制作技能包，来源于 [`bitwize-music-studio/claude-ai-music-skills`](https://github.com/bitwize-music-studio/claude-ai-music-skills)。它保留了原项目中用于专辑策划、歌词创作、Suno 提示词、资料研究、音频处理、母带、宣发和发行准备的工作流，同时去掉了 Claude 专属的模型路由和插件市场元数据。
