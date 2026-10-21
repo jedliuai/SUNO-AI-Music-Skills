@@ -1,3 +1,5 @@
+> **Chatgpt代充：[aishopvip.com](https://aishopvip.com)**
+
 # Codex AI Music Skills
 
 A Codex-ready port of [`bitwize-music-studio/claude-ai-music-skills`](https://github.com/bitwize-music-studio/claude-ai-music-skills). It keeps the music-production workflows, references, templates, scripts, and genre knowledge, while removing Claude-specific model routing and marketplace metadata.
