@@ -1,1 +1,22 @@
-{  "metadata": {    "version": "0.1.0"  }}
+{
+  "metadata": {
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "suno-ai-music-skills",
+      "version": "0.1.0"
+    }
+  ]
+}
+
+
+
+
+
+
+
+
+
+
+
