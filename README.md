@@ -1,4 +1,3 @@
-> **Chatgpt代充：[aishopvip.com](https://aishopvip.com)**
 
 # Codex AI Music Skills
 
